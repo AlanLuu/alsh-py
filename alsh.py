@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import platform
 import sys
 
 class History:
@@ -226,6 +227,11 @@ def print_prompt() -> None:
         print(f"%s:\033[1;34m%s\033[0m$ " % (SHELL_NAME, cwd), end="")
 
 def main(argc: int, argv: list[str]) -> int:
+    if platform.system() == "Windows":
+        eprint(f"""It looks like you are using Windows.
+{SHELL_NAME} is not supported on Windows and only works on Unix-like systems such as Linux and macOS.""")
+        return 1
+
     if argc > 1:
         try:
             with open(argv[1], "r") as f:
