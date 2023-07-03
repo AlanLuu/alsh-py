@@ -235,7 +235,10 @@ def main(argc: int, argv: list[str]) -> int:
     if argc > 1:
         try:
             with open(argv[1], "r") as f:
-                pass
+                for line in f:
+                    line = line.strip()
+                    if not line.startswith(COMMENT_CHAR):
+                        process_command(line)
         except FileNotFoundError:
             eprint(f"{SHELL_NAME}: {argv[1]}: No such file or directory")
             return 1
