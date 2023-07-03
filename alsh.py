@@ -3,6 +3,7 @@
 import os
 import platform
 import sys
+from typing import Union
 
 class History:
     def __init__(self):
@@ -17,23 +18,23 @@ class History:
         self._elements.clear()
         self._count = 0
     
-    def first(self) -> str | None:
+    def first(self) -> Union[str, None]:
         return None if self._count == 0 else self._elements[0]
     
-    def last(self) -> str | None:
+    def last(self) -> Union[str, None]:
         return None if self._count == 0 else self._elements[-1]
     
-    def pop(self, index: int = None) -> str | None:
+    def pop(self, index: int = None) -> Union[str, None]:
         return self.remove(-1 if index is None else index)
     
-    def remove(self, index: int) -> str | None:
+    def remove(self, index: int) -> Union[str, None]:
         if self._count > 0:
             item = self._elements.pop(index)
             self._count -= 1
             return item
         return None
     
-    def __getitem__(self, index: int) -> str | None:
+    def __getitem__(self, index: int) -> Union[str, None]:
         try:
             return self._elements[index]
         except IndexError:
@@ -58,7 +59,7 @@ history = History()
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, int | None]:
+def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, Union[int, None]]:
     stdout_redirect_chr = cmd.find(">")
     if stdout_redirect_chr != -1:
         old_stdout = os.dup(sys.stdout.fileno())
@@ -78,7 +79,7 @@ def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, int |
     
     return status
 
-def handle_redirect_stdin(cmd: str, cmd_tokens: list[str]) -> tuple[int, int | None]:
+def handle_redirect_stdin(cmd: str, cmd_tokens: list[str]) -> tuple[int, Union[int, None]]:
     stdin_redirect_chr = cmd.find("<")
     if stdin_redirect_chr != -1:
         file_name = cmd[stdin_redirect_chr + 1:].strip()
