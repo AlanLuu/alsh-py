@@ -62,20 +62,26 @@ def eprint(*args, **kwargs):
 def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, Union[int, None]]:
     stdout_redirect_chr = cmd.find(">")
     if stdout_redirect_chr != -1:
-        old_stdout = os.dup(sys.stdout.fileno())
-        status = (True, old_stdout)
         file_name = cmd[stdout_redirect_chr + 1:].strip()
         if file_name.startswith(">"):
-            file_name = file_name[1:].strip()
+            while ">" in file_name:
+                file_name = file_name[1:].strip()
             open_mode = "a"
         else:
             open_mode = "w"
-        cmd_tokens.remove(file_name)
         
-        with open(file_name, open_mode) as f:
-            os.dup2(f.fileno(), sys.stdout.fileno())
+        if not file_name:
+            operator = (" " * (cmd_tokens.count("") or 1)).join(e for e in cmd_tokens if e.startswith(">"))
+            eprint(f"{SHELL_NAME}: {operator}: Missing file name")
+            status = (-1, None)
+        else:
+            old_stdout = os.dup(sys.stdout.fileno())
+            status = (1, old_stdout)
+            cmd_tokens.remove(file_name)
+            with open(file_name, open_mode) as f:
+                os.dup2(f.fileno(), sys.stdout.fileno())
     else:
-        status = (False, None)
+        status = (0, None)
     
     return status
 
@@ -150,6 +156,8 @@ def execute_command(cmd: str) -> None:
     if stdin_status[0] == -1:
         return
     stdout_status = handle_redirect_stdout(cmd, tokens)
+    if stdout_status[0] == -1:
+        return
 
     cid = os.fork()
     if cid == 0:
