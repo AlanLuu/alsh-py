@@ -71,8 +71,7 @@ def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, Union
             open_mode = "w"
         
         if not file_name:
-            operator = (" " * (cmd_tokens.count("") or 1)).join(e for e in cmd_tokens if e.startswith(">"))
-            eprint(f"{SHELL_NAME}: {operator}: Missing file name")
+            eprint(f"{SHELL_NAME}: {'>>' if open_mode == 'a' else '>'}: Missing file name")
             status = (-1, None)
         else:
             old_stdout = os.dup(sys.stdout.fileno())
