@@ -105,6 +105,35 @@ def handle_redirect_stdin(cmd: str, cmd_tokens: list[str]) -> tuple[int, Union[i
     return status
 
 def execute_command(cmd: str) -> None:
+    temp_cmd = ""
+    cmd_index = 0
+    cmd_len = len(cmd)
+    special_chrs = ("<", ">")
+    while cmd_index < cmd_len:
+        c = cmd[cmd_index]
+        if (
+            cmd_index > 0
+            and c in special_chrs
+            and (
+                cmd[cmd_index - 1] != " "
+                or (cmd[cmd_index + 1] != " " and cmd[cmd_index + 1] != ">")
+            )
+        ):
+            temp_cmd += " "
+            temp_cmd += c
+            cmd_index += 1
+            if c == ">" and cmd[cmd_index] == ">":
+                temp_cmd += cmd[cmd_index]
+                cmd_index += 1
+            temp_cmd += " "
+        else:
+            temp_cmd += c
+            cmd_index += 1
+    
+    # Remove extra spaces, leaving only one space between tokens
+    temp_cmd = " ".join(temp_cmd.split())
+    
+    cmd = temp_cmd
     tokens = cmd.split(" ")
 
     if tokens[0] == "ls":
