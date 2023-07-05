@@ -197,7 +197,7 @@ def execute_command(cmd: str) -> None:
         try:
             os.execvp(tokens[0], tokens)
         except OSError:
-            eprint(f"{SHELL_NAME}: {tokens[0]}: command not found")
+            eprint(f"{tokens[0]}: command not found")
             sys.exit(1)
     
     os.wait()
@@ -249,6 +249,59 @@ def process_command(cmd: str) -> None:
         return
     
     execute_commands_and_pipes(cmd)
+
+def process_history_exclamations(cmd: str) -> Union[str, None]:
+    if "!" not in cmd:
+        return cmd
+
+    cmd_len = len(cmd)
+    if cmd_len <= 1:
+        return None
+    
+    temp_cmd = ""
+    cmd_index = 0
+    while cmd_index < cmd_len:
+        c = cmd[cmd_index]
+        if c == "!":
+            cmd_index += 1
+            is_negative = False
+            if cmd[cmd_index] == "-":
+                is_negative = True
+                cmd_index += 1
+            
+            if cmd[cmd_index] == "!":
+                if len(history) == 0:
+                    eprint(f"{SHELL_NAME}: !!: event not found")
+                    return None
+                temp_cmd += history[-1]
+                cmd_index += 1
+            elif cmd[cmd_index].isdigit():
+                history_number = 0
+                while cmd_index < cmd_len and cmd[cmd_index].isdigit():
+                    history_number = history_number * 10 + int(cmd[cmd_index])
+                    cmd_index += 1
+                
+                if is_negative:
+                    history_index = len(history) - history_number
+                    if history_index < 0:
+                        eprint(f"{SHELL_NAME}: !-{history_number}: event not found")
+                        return None
+                else:
+                    if history_number <= 0 or history_number > len(history):
+                        eprint(f"{SHELL_NAME}: !{history_number}: event not found")
+                        return None
+                    history_index = history_number - 1
+                
+                temp_cmd += history[history_index]
+            else:
+                cmd_index -= 2 if is_negative else 1
+                eprint(f"{SHELL_NAME}: {cmd[cmd_index:]}: event not found")
+                return None
+        else:
+            temp_cmd += c
+            cmd_index += 1
+    
+    return temp_cmd
 
 def print_intro() -> None:
     print(f"Welcome to {SHELL_NAME}! (Python version)")
@@ -303,50 +356,12 @@ def main(argc: int, argv: list[str]) -> int:
                     print(f"\n{EXIT_COMMAND}")
                     break
 
-                if cmd.startswith("!"):
-                    cmd_len = len(cmd)
-                    if cmd_len <= 1:
-                        print_prompt()
-                        continue
-
-                    index = 1
-                    is_negative = False
-                    if cmd[index] == "-":
-                        is_negative = True
-                        index += 1
-
-                    if cmd[index] == "!":
-                        if len(history) == 0:
-                            eprint(f"{SHELL_NAME}: !!: event not found")
-                            print_prompt()
-                            continue
-                        cmd = history.last() + cmd[2:]
-                    elif cmd[index].isdigit():
-                        history_number = 0
-                        while index < cmd_len and cmd[index].isdigit():
-                            history_number = history_number * 10 + int(cmd[index])
-                            index += 1
-                        
-                        if is_negative:
-                            history_index = len(history) - history_number
-                            if history_index < 0:
-                                eprint(f"{SHELL_NAME}: !-{history_number}: event not found")
-                                print_prompt()
-                                continue
-                        else:
-                            if history_number <= 0 or history_number > len(history):
-                                eprint(f"{SHELL_NAME}: !{history_number}: event not found")
-                                print_prompt()
-                                continue
-                            history_index = history_number - 1
-                        
-                        history_cmd = history[history_index]
-                        cmd = history_cmd + cmd[index:]
-                    else:
-                        eprint(f"{SHELL_NAME}: {cmd}: event not found")
-                        print_prompt()
-                        continue
-
+                history_processed_cmd = process_history_exclamations(cmd)
+                if history_processed_cmd is None:
+                    print_prompt()
+                    continue
+                if cmd != history_processed_cmd:
+                    cmd = history_processed_cmd
                     print(cmd)
                 
                 if cmd and not cmd.startswith(COMMENT_CHAR):
