@@ -353,7 +353,8 @@ def main(argc: int, argv: list[str]) -> int:
                 try:
                     cmd = input().strip()
                 except EOFError:
-                    print(f"\n{EXIT_COMMAND}")
+                    if stdin_from_terminal:
+                        print(f"\n{EXIT_COMMAND}")
                     break
 
                 history_processed_cmd = process_history_exclamations(cmd)
