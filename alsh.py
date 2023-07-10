@@ -104,11 +104,12 @@ def handle_redirect_stdin(cmd: str, cmd_tokens: list[str]) -> tuple[int, Union[i
     
     return status
 
-def execute_command(cmd: str) -> None:
+def execute_command(cmd: str) -> int:
+    exit_status = 0
     temp_cmd = ""
     cmd_index = 0
     cmd_len = len(cmd)
-    special_chrs = ("<", ">")
+    special_chrs = {"<", ">"}
     while cmd_index < cmd_len:
         c = cmd[cmd_index]
         if (
@@ -151,17 +152,20 @@ def execute_command(cmd: str) -> None:
                     os.chdir(cwd)
                 except OSError:
                     eprint(f"{SHELL_NAME}: cd: Failed to go up one directory")
+                    exit_status = 1
             else:
                 try:
                     os.chdir(arg)
                 except OSError:
                     eprint(f"{SHELL_NAME}: cd: {arg}: No such file or directory")
+                    exit_status = 1
         else:
             try:
                 os.chdir(os.path.expanduser("~"))
             except OSError:
                 eprint(f"{SHELL_NAME}: cd: Failed to change to home directory")
-        return
+                exit_status = 1
+        return exit_status
     
     if tokens[0] == HISTORY_COMMAND:
         if tokens_len > 1:
@@ -175,17 +179,18 @@ def execute_command(cmd: str) -> None:
                         f.write(f"{cmd}\n")
             else:
                 eprint(f"{SHELL_NAME}: {HISTORY_COMMAND}: {flag}: invalid option")
+                exit_status = 1
         else:
             for i, cmd in enumerate(history):
                 print(f"    {i + 1}. {cmd}")
-        return
+        return exit_status
     
     stdin_status = handle_redirect_stdin(cmd, tokens)
     if stdin_status[0] == -1:
-        return
+        return 1
     stdout_status = handle_redirect_stdout(cmd, tokens)
     if stdout_status[0] == -1:
-        return
+        return 1
 
     cid = os.fork()
     if cid == 0:
@@ -200,13 +205,16 @@ def execute_command(cmd: str) -> None:
             eprint(f"{tokens[0]}: command not found")
             sys.exit(1)
     
-    os.wait()
+    status = os.wait()
+    exit_status = status[1]
     if stdin_status[0]:
         os.dup2(stdin_status[1], sys.stdin.fileno())
     if stdout_status[0]:
         os.dup2(stdout_status[1], sys.stdout.fileno())
+    
+    return exit_status
 
-def execute_commands_and_pipes(cmd: str) -> None:
+def process_pipe_commands(cmd: str) -> int:
     pipe_chr_pos = cmd.find("|")
     if pipe_chr_pos != -1:
         tokens = [token.strip() for token in cmd.split("|")]
@@ -228,12 +236,40 @@ def execute_commands_and_pipes(cmd: str) -> None:
             os.close(fd[1])
             i += 1
 
-        execute_command(tokens[i])
+        exit_status = execute_command(tokens[i])
         os.dup2(terminal_stdout, sys.stdout.fileno())
         os.dup2(terminal_stdin, sys.stdin.fileno())
-        return
+        return exit_status
     
-    execute_command(cmd)
+    return execute_command(cmd)
+
+def process_or_commands(cmd: str) -> int:
+    or_chr_pos = cmd.find("||")
+    if or_chr_pos != -1:
+        tokens = [token.strip() for token in cmd.split("||")]
+        for token in tokens:
+            if not token:
+                continue
+            exit_status = process_pipe_commands(token)
+            if exit_status == 0:
+                return 0
+        return 1
+    
+    return process_pipe_commands(cmd)
+
+def process_and_commands(cmd: str) -> int:
+    and_chr_pos = cmd.find("&&")
+    if and_chr_pos != -1:
+        tokens = [token.strip() for token in cmd.split("&&")]
+        for token in tokens:
+            if not token:
+                continue
+            exit_status = process_or_commands(token)
+            if exit_status != 0:
+                return exit_status
+        return 0
+    
+    return process_or_commands(cmd)
 
 def process_command(cmd: str) -> None:
     comment_chr_pos = cmd.find(COMMENT_CHAR)
@@ -245,10 +281,10 @@ def process_command(cmd: str) -> None:
         for token in cmd.split(";"):
             token = token.strip()
             if token:
-                execute_commands_and_pipes(token)
+                process_and_commands(token)
         return
     
-    execute_commands_and_pipes(cmd)
+    process_and_commands(cmd)
 
 def process_history_exclamations(cmd: str) -> Union[str, None]:
     if "!" not in cmd:
