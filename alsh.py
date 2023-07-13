@@ -24,7 +24,7 @@ class History:
     def last(self) -> Union[str, None]:
         return None if self._count == 0 else self._elements[-1]
     
-    def pop(self, index: int = None) -> Union[str, None]:
+    def pop(self, index: Union[int, None] = None) -> Union[str, None]:
         return self.remove(-1 if index is None else index)
     
     def remove(self, index: int) -> Union[str, None]:
