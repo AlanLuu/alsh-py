@@ -122,6 +122,8 @@ def handle_redirect_stdin(cmd: str, cmd_tokens: list[str]) -> tuple[int, Union[i
     return status
 
 def execute_command(cmd: str) -> int:
+    if not cmd:
+        return 1
     exit_status = 0
     temp_cmd = ""
     cmd_index = 0
