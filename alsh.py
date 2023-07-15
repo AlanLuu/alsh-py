@@ -70,7 +70,10 @@ cwd = ""
 history = History()
 pwd = getpwuid(os.getuid())
 
-def is_root_user():
+def is_in_home_directory() -> bool:
+    return cwd.startswith(pwd.pw_dir)
+
+def is_root_user() -> bool:
     return pwd.pw_uid == 0
 
 def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, Union[int, None]]:
@@ -360,10 +363,16 @@ def print_intro() -> None:
 def print_prompt() -> None:
     global cwd
     cwd = os.getcwd()
-    if is_root_user():
-        print(f"\033[1;31m%s-root:\033[1;34m%s\033[0m# " % (SHELL_NAME, cwd), end="")
+    if is_in_home_directory():
+        print(
+            (f"\033[1;31m%s-root:\033[1;34m~%s\033[0m# " if is_root_user() else "%s:\033[1;34m~%s\033[0m$ ")
+            % (SHELL_NAME, cwd[len(pwd.pw_dir):]), end=""
+        )
     else:
-        print(f"%s:\033[1;34m%s\033[0m$ " % (SHELL_NAME, cwd), end="")
+        print(
+            (f"\033[1;31m%s-root:\033[1;34m%s\033[0m# " if is_root_user() else "%s:\033[1;34m%s\033[0m$ ")
+            % (SHELL_NAME, cwd), end=""
+        )
 
 def main(argc: int, argv: list[str]) -> int:
     if argc > 1:
