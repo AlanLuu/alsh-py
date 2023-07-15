@@ -169,14 +169,23 @@ def execute_command(cmd: str) -> int:
                 cwd = cwd[:last_slash_pos + 1]
                 try:
                     os.chdir(cwd)
+                except PermissionError:
+                    eprint(f"{SHELL_NAME}: cd: {arg}: Permission denied")
+                    exit_status = 1
                 except OSError:
-                    eprint(f"{SHELL_NAME}: cd: Failed to go up one directory")
+                    eprint(f"{SHELL_NAME}: cd: Failed to change to parent directory")
                     exit_status = 1
             else:
                 try:
                     os.chdir(arg)
-                except OSError:
+                except PermissionError:
+                    eprint(f"{SHELL_NAME}: cd: {arg}: Permission denied")
+                    exit_status = 1
+                except FileNotFoundError:
                     eprint(f"{SHELL_NAME}: cd: {arg}: No such file or directory")
+                    exit_status = 1
+                except OSError:
+                    eprint(f"{SHELL_NAME}: cd: {arg}: Failed to change to directory")
                     exit_status = 1
         else:
             try:
