@@ -52,12 +52,26 @@ HISTORY_COMMAND = "history"
 HISTORY_FILE_NAME = ".alsh_history"
 SHELL_NAME = "alsh"
 
+# Print to stderr
+def eprint(*args, **kwargs) -> None:
+    print(*args, file=sys.stderr, **kwargs)
+
+try:
+    from pwd import getpwuid
+except ImportError:
+    if platform.system() == "Windows":
+        eprint(f"""It looks like you are using Windows.
+{SHELL_NAME} is not supported on Windows and only works on Unix-like systems such as Linux and macOS.""")
+    else:
+        eprint(f"{SHELL_NAME}: Failed to import pwd module")
+    raise SystemExit(1)
+
 cwd = ""
 history = History()
+pwd = getpwuid(os.getuid())
 
-# Print to stderr
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+def is_root_user():
+    return pwd.pw_uid == 0
 
 def handle_redirect_stdout(cmd: str, cmd_tokens: list[str]) -> tuple[bool, Union[int, None]]:
     stdout_redirect_chr = cmd.find(">")
@@ -173,7 +187,7 @@ def execute_command(cmd: str) -> int:
             if flag == "-c":
                 history.clear()
             elif flag == "-w":
-                history_file = f"{os.getenv('HOME')}/{HISTORY_FILE_NAME}"
+                history_file = f"{pwd.pw_dir}/{HISTORY_FILE_NAME}"
                 with open(history_file, "w") as f:
                     for cmd in history:
                         f.write(f"{cmd}\n")
@@ -346,18 +360,12 @@ def print_intro() -> None:
 def print_prompt() -> None:
     global cwd
     cwd = os.getcwd()
-    is_root = os.getuid() == 0
-    if is_root:
+    if is_root_user():
         print(f"\033[1;31m%s-root:\033[1;34m%s\033[0m# " % (SHELL_NAME, cwd), end="")
     else:
         print(f"%s:\033[1;34m%s\033[0m$ " % (SHELL_NAME, cwd), end="")
 
 def main(argc: int, argv: list[str]) -> int:
-    if platform.system() == "Windows":
-        eprint(f"""It looks like you are using Windows.
-{SHELL_NAME} is not supported on Windows and only works on Unix-like systems such as Linux and macOS.""")
-        return 1
-
     if argc > 1:
         try:
             with open(argv[1], "r") as f:
@@ -369,7 +377,7 @@ def main(argc: int, argv: list[str]) -> int:
             eprint(f"{SHELL_NAME}: {argv[1]}: No such file or directory")
             return 1
     else:
-        history_file = f"{os.getenv('HOME')}/{HISTORY_FILE_NAME}"
+        history_file = f"{pwd.pw_dir}/{HISTORY_FILE_NAME}"
         try:
             with open(history_file, "r") as f:
                 for line in f:
