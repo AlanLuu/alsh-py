@@ -376,12 +376,12 @@ def print_prompt() -> None:
     cwd = os.getcwd()
     if is_in_home_directory():
         print(
-            (f"\033[1;31m%s-root:\033[1;34m~%s\033[0m# " if is_root_user() else "%s:\033[1;34m~%s\033[0m$ ")
+            (f"\033[38;5;196;1m%s-root:\033[1;34m~%s\033[0m# " if is_root_user() else "%s:\033[1;34m~%s\033[0m$ ")
             % (SHELL_NAME, cwd[len(pwd.pw_dir):]), end=""
         )
     else:
         print(
-            (f"\033[1;31m%s-root:\033[1;34m%s\033[0m# " if is_root_user() else "%s:\033[1;34m%s\033[0m$ ")
+            (f"\033[38;5;196;1m%s-root:\033[1;34m%s\033[0m# " if is_root_user() else "%s:\033[1;34m%s\033[0m$ ")
             % (SHELL_NAME, cwd), end=""
         )
 
