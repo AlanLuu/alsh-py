@@ -1,7 +1,7 @@
 # alsh-py
 A custom UNIX shell written in Python, originally written in C as [alsh](https://github.com/AlanLuu/alsh).
 
-**NOTE**: alsh-py only works on Unix-like systems such as Linux and macOS. It will **not** work on Windows as it uses several functions from the `os` module that are not available on Windows.
+**NOTE**: alsh-py only works on Unix-like systems such as Linux and macOS. It requires Python 3.8 or higher on the aforementioned systems. It will **not** work on Windows as it uses several functions from the `os` module that are not available on Windows.
 
 # Features
 - Execute commands (e.g. `ls`)
@@ -20,6 +20,7 @@ A custom UNIX shell written in Python, originally written in C as [alsh](https:/
     - To write the history list to a file, use `history -w`, which will write the list to `~/.alsh_history`
 
 # Run
+(Requires Python 3.8+)
 ```
 git clone https://github.com/AlanLuu/alsh-py.git
 cd alsh-py
