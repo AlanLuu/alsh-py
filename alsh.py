@@ -233,7 +233,12 @@ def execute_command(cmd: str) -> int:
             eprint(f"{tokens[0]}: command not found")
             sys.exit(1)
     
-    status = os.wait()
+    try:
+        while (status := os.wait())[1] > 0:
+            pass
+    except ChildProcessError:
+        pass
+    
     exit_status = status[1]
     if stdin_status[0]:
         os.dup2(stdin_status[1], sys.stdin.fileno())
@@ -259,7 +264,11 @@ def process_pipe_commands(cmd: str) -> int:
                 os.close(fd[0])
                 execute_command(tokens[i])
                 sys.exit(0)
-            os.wait()
+            try:
+                while os.wait()[1] > 0:
+                    pass
+            except ChildProcessError:
+                pass
             os.dup2(fd[0], sys.stdin.fileno())
             os.close(fd[1])
             i += 1
