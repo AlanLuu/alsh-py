@@ -451,6 +451,10 @@ def main(argc: int, argv: list[str]) -> int:
             except KeyboardInterrupt:
                 print()
                 print_prompt()
+                try:
+                    os.wait()
+                except ChildProcessError:
+                    pass
     
     return 0
 
