@@ -156,11 +156,23 @@ def execute_command(cmd: str) -> int:
     cmd = temp_cmd
     tokens = cmd.split(" ")
 
+    stdin_status = handle_redirect_stdin(cmd, tokens)
+    if stdin_status[0] == -1:
+        return 1
+    stdout_status = handle_redirect_stdout(cmd, tokens)
+    if stdout_status[0] == -1:
+        return 1
+    strs_to_remove = ("<", ">", ">>")
+    for str in strs_to_remove:
+        while str in tokens:
+            tokens.remove(str)
+    
+    is_built_in_command = False
+    tokens_len = len(tokens)
     if tokens[0] == "ls":
         tokens.append("--color=auto")
-    
-    tokens_len = len(tokens)
-    if tokens[0] == "cd":
+    elif tokens[0] == "cd":
+        is_built_in_command = True
         if tokens_len > 1:
             arg = tokens[1]
             if arg == "..":
@@ -193,9 +205,8 @@ def execute_command(cmd: str) -> int:
             except OSError:
                 eprint(f"{SHELL_NAME}: cd: Failed to change to home directory")
                 exit_status = 1
-        return exit_status
-    
-    if tokens[0] == HISTORY_COMMAND:
+    elif tokens[0] == HISTORY_COMMAND:
+        is_built_in_command = True
         if tokens_len > 1:
             flag = tokens[1]
             if flag == "-c":
@@ -211,40 +222,26 @@ def execute_command(cmd: str) -> int:
         else:
             for i, cmd in enumerate(history):
                 print(f"    {i + 1}. {cmd}")
-        return exit_status
     
-    stdin_status = handle_redirect_stdin(cmd, tokens)
-    if stdin_status[0] == -1:
-        return 1
-    stdout_status = handle_redirect_stdout(cmd, tokens)
-    if stdout_status[0] == -1:
-        return 1
-
-    cid = os.fork()
-    if cid == 0:
-        strs_to_remove = ("<", ">", ">>")
-        for str in strs_to_remove:
-            while str in tokens:
-                tokens.remove(str)
-        
+    if not is_built_in_command:
+        cid = os.fork()
+        if cid == 0:
+            try:
+                os.execvp(tokens[0], tokens)
+            except OSError:
+                eprint(f"{tokens[0]}: command not found")
+                sys.exit(1)
         try:
-            os.execvp(tokens[0], tokens)
-        except OSError:
-            eprint(f"{tokens[0]}: command not found")
-            sys.exit(1)
-    
-    try:
-        while (status := os.wait())[1] > 0:
+            while (status := os.wait())[1] > 0:
+                pass
+        except ChildProcessError:
             pass
-    except ChildProcessError:
-        pass
+        exit_status = status[1]
     
-    exit_status = status[1]
     if stdin_status[0]:
         os.dup2(stdin_status[1], sys.stdin.fileno())
     if stdout_status[0]:
         os.dup2(stdout_status[1], sys.stdout.fileno())
-    
     return exit_status
 
 def process_pipe_commands(cmd: str) -> int:
