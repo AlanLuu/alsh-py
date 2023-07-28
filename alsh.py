@@ -171,6 +171,12 @@ def execute_command(cmd: str) -> int:
     tokens_len = len(tokens)
     if tokens[0] == "ls":
         tokens.append("--color=auto")
+    elif tokens[0] == "true":
+        is_built_in_command = True
+        exit_status = 0
+    elif tokens[0] == "false":
+        is_built_in_command = True
+        exit_status = 1
     elif tokens[0] == "cd":
         is_built_in_command = True
         if tokens_len > 1:
