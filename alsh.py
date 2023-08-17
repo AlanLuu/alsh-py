@@ -121,7 +121,7 @@ def handle_redirect_stdin(cmd: str, cmd_tokens: list[str]) -> tuple[int, Union[i
     
     return status
 
-def execute_command(cmd: str) -> int:
+def execute_command(cmd: str, *, wait_for_command: bool) -> int:
     if not cmd:
         return 1
     exit_status = 0
@@ -237,12 +237,13 @@ def execute_command(cmd: str) -> int:
             except OSError:
                 eprint(f"{tokens[0]}: command not found")
                 sys.exit(1)
-        try:
-            while (status := os.wait())[1] > 0:
+        if wait_for_command:
+            try:
+                while (status := os.wait())[1] > 0:
+                    pass
+            except ChildProcessError:
                 pass
-        except ChildProcessError:
-            pass
-        exit_status = status[1]
+            exit_status = status[1]
     
     if stdin_status[0]:
         os.dup2(stdin_status[1], sys.stdin.fileno())
@@ -263,25 +264,29 @@ def process_pipe_commands(cmd: str) -> int:
             fd = os.pipe()
             cid = os.fork()
             if cid == 0:
-                os.dup2(fd[1], sys.stdout.fileno())
                 os.close(fd[0])
-                execute_command(tokens[i])
+                os.dup2(fd[1], sys.stdout.fileno())
+                os.close(fd[1])
+                execute_command(tokens[i], wait_for_command=False)
                 sys.exit(0)
+            os.close(fd[1])
+            os.dup2(fd[0], sys.stdin.fileno())
+            os.close(fd[0])
             try:
                 while os.wait()[1] > 0:
                     pass
             except ChildProcessError:
                 pass
-            os.dup2(fd[0], sys.stdin.fileno())
-            os.close(fd[1])
             i += 1
 
-        exit_status = execute_command(tokens[i])
+        exit_status = execute_command(tokens[i], wait_for_command=True)
         os.dup2(terminal_stdout, sys.stdout.fileno())
         os.dup2(terminal_stdin, sys.stdin.fileno())
+        os.close(terminal_stdout)
+        os.close(terminal_stdin)
         return exit_status
     
-    return execute_command(cmd)
+    return execute_command(cmd, wait_for_command=True)
 
 def process_or_commands(cmd: str) -> int:
     or_chr_pos = cmd.find("||")
