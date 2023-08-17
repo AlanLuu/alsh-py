@@ -449,7 +449,13 @@ def main(argc: int, argv: list[str]) -> int:
                 if cmd and not cmd.startswith(COMMENT_CHAR):
                     if not history.last() == HISTORY_COMMAND or not cmd == HISTORY_COMMAND:
                         history.add(cmd)
-                    if cmd == EXIT_COMMAND:
+                    if (
+                        cmd.startswith(EXIT_COMMAND)
+                        and (
+                            len(cmd) == (exit_command_len := len(EXIT_COMMAND))
+                            or cmd[exit_command_len] == " "
+                        )
+                    ):
                         print(f"{EXIT_COMMAND}")
                         break
                     process_command(cmd)
